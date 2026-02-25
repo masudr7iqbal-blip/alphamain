@@ -3,12 +3,12 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from motor.motor_asyncio import AsyncIOMotorClient
 
-# --- CONFIGURATION ---
+# --- CONFIGURATION (এগুলো আমি সেট করে দিয়েছি) ---
 API_ID = 36701545
 API_HASH = "92e8025812ade7acc47f9dc8057b34ad"
 BOT_TOKEN = "8530900754:AAFiFRX60Om1r485mTSdiEs37rvvjz78NbI"
 MONGO_URI = "mongodb+srv://Alpha:001100@cluster0.mp2hbsi.mongodb.net/?retryWrites=true&w=majority"
-ADMIN_ID = 8303112705
+ADMIN_ID = 8153774922  # আপনার নতুন আইডি এখানে সেট করা হয়েছে
 ADMIN_LINK = "https://t.me/XpremiumB"
 PHOTO_URL = "https://telegra.ph/file/70cc037b-7c6e-4cf2-babd-e6715bf8a80e.jpg"
 
@@ -19,10 +19,12 @@ users_col = db.users
 
 app = Client("AlphaPremiumBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
+# --- USER SAVING ---
 async def add_user(user_id):
     if not await users_col.find_one({"user_id": user_id}):
         await users_col.insert_one({"user_id": user_id})
 
+# --- START COMMAND ---
 @app.on_message(filters.command("start") & filters.private)
 async def start(bot, message):
     await add_user(message.from_user.id)
@@ -38,6 +40,36 @@ async def start(bot, message):
     ])
     await message.reply_photo(photo=PHOTO_URL, caption=caption, reply_markup=buttons)
 
+# --- ADMIN FEATURE: POST MAKER ---
+@app.on_message(filters.photo & filters.user(ADMIN_ID))
+async def make_post(bot, message):
+    template_caption = (
+        "🔞 **Exclusive Alpha VIP Access**\n\n"
+        "🚀 **নতুন কন্টেন্ট আপলোড করা হয়েছে!**\n"
+        "✅ Crystal Clear Ultra HD 4K\n"
+        "✅ Fast & Private Support\n\n"
+        "👇 **নিচের বাটন থেকে মেম্বারশিপ নিন:**"
+    )
+    buttons = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🍿 Watch Free Demo", url=ADMIN_LINK)],
+        [InlineKeyboardButton("💳 Buy Premium Subscription 💎", callback_data="show_plans")],
+        [InlineKeyboardButton("✅ পেমেন্ট ভেরিফিকেশন (ইনবক্স)", url=ADMIN_LINK)]
+    ])
+    await message.reply_photo(photo=message.photo.file_id, caption=template_caption, reply_markup=buttons)
+
+# --- ADMIN FEATURE: BROADCAST ---
+@app.on_message(filters.command("broadcast") & filters.user(ADMIN_ID) & filters.reply)
+async def broadcast(bot, message):
+    users = users_col.find({})
+    count = 0
+    async for user in users:
+        try:
+            await message.reply_to_message.copy(user['user_id'])
+            count += 1
+        except: pass
+    await message.reply(f"✅ ব্রডকাস্ট সফল! {count} জন ইউজার মেসেজ পেয়েছেন।")
+
+# --- CALLBACKS ---
 @app.on_callback_query(filters.regex("show_plans"))
 async def plans(bot, query):
     text = "**🔥 VIP MEMBERSHIP PLANS**\n\n✅ ১ মাস অ্যাক্সেস — ৪৫০ টাকা\n\n👇 **পেমেন্ট মেথড:**"
@@ -48,19 +80,6 @@ async def plans(bot, query):
         [InlineKeyboardButton("✅ পেমেন্ট ভেরিফিকেশন (ইনবক্স)", url=ADMIN_LINK)]
     ])
     await query.message.edit_caption(caption=text, reply_markup=buttons)
-
-@app.on_message(filters.photo & filters.user(ADMIN_ID))
-async def make_post(bot, message):
-    template_caption = (
-        "🔞 **Exclusive Alpha VIP Access**\n\n🚀 **নতুন কন্টেন্ট আপলোড করা হয়েছে!**\n"
-        "✅ Crystal Clear Ultra HD 4K\n✅ Fast & Private Support\n\n👇 **নিচের বাটন থেকে মেম্বারশিপ নিন:**"
-    )
-    buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🍿 Watch Free Demo", url=ADMIN_LINK)],
-        [InlineKeyboardButton("💳 Buy Premium Subscription 💎", callback_data="show_plans")],
-        [InlineKeyboardButton("✅ পেমেন্ট ভেরিফিকেশন (ইনবক্স)", url=ADMIN_LINK)]
-    ])
-    await message.reply_photo(photo=message.photo.file_id, caption=template_caption, reply_markup=buttons)
 
 print("Alpha Premium Bot Live...")
 app.run()
